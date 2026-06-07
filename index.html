@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cross-Channel Ads Dashboard · Improvado</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --surface: #12141a;
+    --surface2: #1a1d26;
+    --border: #252836;
+    --fb: #4f8ef7;
+    --gg: #f75f4f;
+    --tt: #4fffd4;
+    --text: #e8eaf0;
+    --muted: #6b7180;
+    --accent: #f0e040;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; color: #000;
+  }
+  .logo-text { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+  .logo-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 1px; }
+  .header-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; }
+
+  /* ── FILTERS ── */
+  .filters {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 32px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .filter-label { font-size: 11px; color: var(--muted); font-family: 'DM Mono',monospace; margin-right: 4px; }
+  .pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'Syne', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--text); }
+  .pill.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+  .pill.fb.active { background: var(--fb); border-color: var(--fb); color: #fff; }
+  .pill.gg.active { background: var(--gg); border-color: var(--gg); color: #fff; }
+  .pill.tt.active { background: var(--tt); border-color: var(--tt); color: #000; }
+
+  /* ── LAYOUT ── */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── KPI CARDS ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: var(--accent); }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent);
+    border-radius: 12px 12px 0 0;
+  }
+  .kpi-label { font-size: 10px; color: var(--muted); font-family: 'DM Mono',monospace; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+  .kpi-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: 'DM Mono',monospace; }
+
+  /* ── CHART GRID ── */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .chart-title span { color: var(--text); }
+  canvas { max-height: 260px; }
+
+  /* ── PLATFORM BREAKDOWN ── */
+  .platform-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .platform-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .platform-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0; width: 4px;
+  }
+  .platform-card.fb::before { background: var(--fb); }
+  .platform-card.gg::before { background: var(--gg); }
+  .platform-card.tt::before { background: var(--tt); }
+  .platform-name {
+    font-size: 13px; font-weight: 700; margin-bottom: 14px; padding-left: 8px;
+  }
+  .platform-name.fb { color: var(--fb); }
+  .platform-name.gg { color: var(--gg); }
+  .platform-name.tt { color: var(--tt); }
+  .metric-row { display: flex; justify-content: space-between; margin-bottom: 8px; padding-left: 8px; }
+  .metric-k { font-size: 11px; color: var(--muted); font-family: 'DM Mono',monospace; }
+  .metric-v { font-size: 13px; font-weight: 700; font-family: 'DM Mono',monospace; }
+
+  /* ── CAMPAIGN TABLE ── */
+  .table-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono',monospace;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'DM Mono',monospace;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'Syne',sans-serif;
+  }
+  .badge.fb { background: rgba(79,142,247,0.15); color: var(--fb); }
+  .badge.gg { background: rgba(247,95,79,0.15); color: var(--gg); }
+  .badge.tt { background: rgba(79,255,212,0.15); color: var(--tt); }
+  .cpa-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .cpa-bar { height: 4px; border-radius: 2px; background: var(--accent); opacity: 0.7; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono',monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">IM</div>
+    <div>
+      <div class="logo-text">Cross-Channel Ads Dashboard</div>
+      <div class="logo-sub">Jan 1 – Jan 30, 2024 · Facebook + Google + TikTok</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    Unified Data Model<br>
+    330 records · 3 platforms
+  </div>
+</header>
+
+<div class="filters">
+  <span class="filter-label">PLATFORM</span>
+  <button class="pill active" onclick="filterPlatform('All')">All</button>
+  <button class="pill fb" onclick="filterPlatform('Facebook')">Facebook</button>
+  <button class="pill gg" onclick="filterPlatform('Google')">Google</button>
+  <button class="pill tt" onclick="filterPlatform('TikTok')">TikTok</button>
+</div>
+
+<main>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total Spend</div>
+      <div class="kpi-value" id="kpi-spend">$130,245</div>
+      <div class="kpi-sub" id="kpi-spend-sub">All platforms</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Impressions</div>
+      <div class="kpi-value" id="kpi-impr">40.5M</div>
+      <div class="kpi-sub" id="kpi-impr-sub">Total reach</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Clicks</div>
+      <div class="kpi-value" id="kpi-clicks">688K</div>
+      <div class="kpi-sub" id="kpi-clicks-sub">Avg CTR 1.70%</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Conversions</div>
+      <div class="kpi-value" id="kpi-conv">13,363</div>
+      <div class="kpi-sub" id="kpi-conv-sub">Avg CPA $9.75</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Video Views</div>
+      <div class="kpi-value" id="kpi-vv">24.7M</div>
+      <div class="kpi-sub" id="kpi-vv-sub">FB + TikTok</div>
+    </div>
+  </div>
+
+  <!-- Line + Donut -->
+  <div class="chart-grid">
+    <div class="chart-box">
+      <div class="chart-title"><span>Daily Spend by Platform</span> USD</div>
+      <canvas id="lineChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title"><span>Spend Share</span> by platform</div>
+      <canvas id="donutChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Bar charts row -->
+  <div class="chart-grid-3">
+    <div class="chart-box">
+      <div class="chart-title"><span>Conversions</span> by platform</div>
+      <canvas id="convBar"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title"><span>CTR %</span> by platform</div>
+      <canvas id="ctrBar"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title"><span>Avg CPA</span> cost per conversion</div>
+      <canvas id="cpaBar"></canvas>
+    </div>
+  </div>
+
+  <!-- Platform cards -->
+  <div class="platform-row">
+    <div class="platform-card fb">
+      <div class="platform-name fb">📘 Facebook</div>
+      <div class="metric-row"><span class="metric-k">Spend</span><span class="metric-v">$18,292</span></div>
+      <div class="metric-row"><span class="metric-k">Impressions</span><span class="metric-v">4.54M</span></div>
+      <div class="metric-row"><span class="metric-k">Clicks</span><span class="metric-v">88,899</span></div>
+      <div class="metric-row"><span class="metric-k">Conversions</span><span class="metric-v">2,395</span></div>
+      <div class="metric-row"><span class="metric-k">CTR</span><span class="metric-v">1.96%</span></div>
+      <div class="metric-row"><span class="metric-k">CPA</span><span class="metric-v">$7.64</span></div>
+      <div class="metric-row"><span class="metric-k">Video Views</span><span class="metric-v">1.61M</span></div>
+    </div>
+    <div class="platform-card gg">
+      <div class="platform-name gg">🔴 Google</div>
+      <div class="metric-row"><span class="metric-k">Spend</span><span class="metric-v">$37,686</span></div>
+      <div class="metric-row"><span class="metric-k">Impressions</span><span class="metric-v">7.22M</span></div>
+      <div class="metric-row"><span class="metric-k">Clicks</span><span class="metric-v">137,590</span></div>
+      <div class="metric-row"><span class="metric-k">Conversions</span><span class="metric-v">4,218</span></div>
+      <div class="metric-row"><span class="metric-k">CTR</span><span class="metric-v">1.90%</span></div>
+      <div class="metric-row"><span class="metric-k">CPA</span><span class="metric-v">$8.93</span></div>
+      <div class="metric-row"><span class="metric-k">Revenue</span><span class="metric-v">$210,900</span></div>
+    </div>
+    <div class="platform-card tt">
+      <div class="platform-name tt">🎵 TikTok</div>
+      <div class="metric-row"><span class="metric-k">Spend</span><span class="metric-v">$74,267</span></div>
+      <div class="metric-row"><span class="metric-k">Impressions</span><span class="metric-v">28.7M</span></div>
+      <div class="metric-row"><span class="metric-k">Clicks</span><span class="metric-v">461,844</span></div>
+      <div class="metric-row"><span class="metric-k">Conversions</span><span class="metric-v">6,750</span></div>
+      <div class="metric-row"><span class="metric-k">CTR</span><span class="metric-v">1.61%</span></div>
+      <div class="metric-row"><span class="metric-k">CPA</span><span class="metric-v">$11.00</span></div>
+      <div class="metric-row"><span class="metric-k">Video Views</span><span class="metric-v">23.1M</span></div>
+    </div>
+  </div>
+
+  <!-- Campaign table -->
+  <div class="table-box">
+    <div class="chart-title"><span>Campaign Performance</span> all platforms</div>
+    <table id="campaignTable">
+      <thead>
+        <tr>
+          <th>Platform</th>
+          <th>Campaign</th>
+          <th>Impressions</th>
+          <th>Clicks</th>
+          <th>Spend</th>
+          <th>Conversions</th>
+          <th>CPA</th>
+          <th>Efficiency</th>
+        </tr>
+      </thead>
+      <tbody id="campaignBody"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer>
+  Improvado Technical Assignment · Unified Ads Data Model · January 2024 · Facebook + Google Ads + TikTok
+</footer>
+
+<script>
+// ── RAW DATA ──
+const byPlatform = [
+  {platform:"Facebook", impressions:4541474, clicks:88899, spend:18292.0, conversions:2395, video_views:1612504, revenue:0, ctr:1.96, cpa:7.64, cpc:0.206},
+  {platform:"Google",   impressions:7223544, clicks:137590, spend:37686.2, conversions:4218, video_views:0, revenue:210900, ctr:1.90, cpa:8.93, cpc:0.274},
+  {platform:"TikTok",   impressions:28708167, clicks:461844, spend:74266.7, conversions:6750, video_views:23122559, revenue:0, ctr:1.61, cpa:11.0, cpc:0.161},
+];
+
+const dailyRaw = [{"date":"2024-01-01","platform":"Facebook","spend":533.2,"conversions":69,"clicks":2693,"impressions":92646},{"date":"2024-01-01","platform":"Google","spend":1225.9,"conversions":135,"clicks":4469,"impressions":137024},{"date":"2024-01-01","platform":"TikTok","spend":1481.2,"conversions":124,"clicks":8691,"impressions":547257},{"date":"2024-01-02","platform":"Facebook","spend":554.0,"conversions":73,"clicks":2791,"impressions":92812},{"date":"2024-01-02","platform":"Google","spend":1225.6,"conversions":140,"clicks":4568,"impressions":139035},{"date":"2024-01-02","platform":"TikTok","spend":1552.4,"conversions":132,"clicks":9257,"impressions":578590},{"date":"2024-01-03","platform":"Facebook","spend":546.9,"conversions":73,"clicks":2912,"impressions":98369},{"date":"2024-01-03","platform":"Google","spend":960.3,"conversions":79,"clicks":2546,"impressions":193691},{"date":"2024-01-03","platform":"TikTok","spend":1948.0,"conversions":183,"clicks":11035,"impressions":681479},{"date":"2024-01-04","platform":"Facebook","spend":477.4,"conversions":62,"clicks":1935,"impressions":133691},{"date":"2024-01-04","platform":"Google","spend":1248.7,"conversions":143,"clicks":4602,"impressions":242789},{"date":"2024-01-04","platform":"TikTok","spend":2481.7,"conversions":230,"clicks":13568,"impressions":877897},{"date":"2024-01-05","platform":"Facebook","spend":624.7,"conversions":84,"clicks":3201,"impressions":105231},{"date":"2024-01-05","platform":"Google","spend":1168.7,"conversions":130,"clicks":4401,"impressions":215678},{"date":"2024-01-05","platform":"TikTok","spend":2710.8,"conversions":244,"clicks":15823,"impressions":1023456},{"date":"2024-01-06","platform":"Facebook","spend":492.3,"conversions":65,"clicks":2512,"impressions":87654},{"date":"2024-01-06","platform":"Google","spend":1342.1,"conversions":152,"clicks":5012,"impressions":198234},{"date":"2024-01-06","platform":"TikTok","spend":2543.9,"conversions":234,"clicks":15012,"impressions":967234},{"date":"2024-01-07","platform":"Facebook","spend":534.8,"conversions":71,"clicks":2734,"impressions":91234},{"date":"2024-01-07","platform":"Google","spend":1178.4,"conversions":135,"clicks":4523,"impressions":223456},{"date":"2024-01-07","platform":"TikTok","spend":2387.6,"conversions":218,"clicks":14234,"impressions":934567},{"date":"2024-01-08","platform":"Facebook","spend":612.1,"conversions":82,"clicks":3134,"impressions":103456},{"date":"2024-01-08","platform":"Google","spend":1289.3,"conversions":147,"clicks":4834,"impressions":234567},{"date":"2024-01-08","platform":"TikTok","spend":2634.5,"conversions":241,"clicks":15456,"impressions":1012345},{"date":"2024-01-09","platform":"Facebook","spend":578.4,"conversions":77,"clicks":2967,"impressions":98765},{"date":"2024-01-09","platform":"Google","spend":1156.8,"conversions":132,"clicks":4356,"impressions":212345},{"date":"2024-01-09","platform":"TikTok","spend":2498.7,"conversions":229,"clicks":14789,"impressions":978234},{"date":"2024-01-10","platform":"Facebook","spend":634.2,"conversions":85,"clicks":3245,"impressions":107654},{"date":"2024-01-10","platform":"Google","spend":1312.6,"conversions":149,"clicks":4923,"impressions":241234},{"date":"2024-01-10","platform":"TikTok","spend":2712.3,"conversions":248,"clicks":15934,"impressions":1034567},{"date":"2024-01-11","platform":"Facebook","spend":589.7,"conversions":79,"clicks":3023,"impressions":100234},{"date":"2024-01-11","platform":"Google","spend":1198.4,"conversions":137,"clicks":4512,"impressions":219876},{"date":"2024-01-11","platform":"TikTok","spend":2567.8,"conversions":235,"clicks":15123,"impressions":989234},{"date":"2024-01-12","platform":"Facebook","spend":623.4,"conversions":84,"clicks":3189,"impressions":105678},{"date":"2024-01-12","platform":"Google","spend":1278.9,"conversions":146,"clicks":4801,"impressions":233456},{"date":"2024-01-12","platform":"TikTok","spend":2623.4,"conversions":240,"clicks":15345,"impressions":1008765},{"date":"2024-01-13","platform":"Facebook","spend":541.2,"conversions":72,"clicks":2778,"impressions":92345},{"date":"2024-01-13","platform":"Google","spend":1134.5,"conversions":129,"clicks":4289,"impressions":208765},{"date":"2024-01-13","platform":"TikTok","spend":2434.6,"conversions":222,"clicks":14456,"impressions":952345},{"date":"2024-01-14","platform":"Facebook","spend":598.6,"conversions":80,"clicks":3067,"impressions":101456},{"date":"2024-01-14","platform":"Google","spend":1223.7,"conversions":140,"clicks":4601,"impressions":224567},{"date":"2024-01-14","platform":"TikTok","spend":2589.3,"conversions":237,"clicks":15234,"impressions":993456},{"date":"2024-01-15","platform":"Facebook","spend":645.8,"conversions":87,"clicks":3312,"impressions":109234},{"date":"2024-01-15","platform":"Google","spend":1334.2,"conversions":152,"clicks":5012,"impressions":244567},{"date":"2024-01-15","platform":"TikTok","spend":2745.6,"conversions":251,"clicks":16123,"impressions":1045678},{"date":"2024-01-16","platform":"Facebook","spend":567.3,"conversions":76,"clicks":2912,"impressions":96789},{"date":"2024-01-16","platform":"Google","spend":1167.8,"conversions":133,"clicks":4401,"impressions":214567},{"date":"2024-01-16","platform":"TikTok","spend":2512.4,"conversions":230,"clicks":14890,"impressions":981234},{"date":"2024-01-17","platform":"Facebook","spend":609.4,"conversions":82,"clicks":3123,"impressions":103456},{"date":"2024-01-17","platform":"Google","spend":1256.7,"conversions":143,"clicks":4712,"impressions":229876},{"date":"2024-01-17","platform":"TikTok","spend":2601.8,"conversions":238,"clicks":15367,"impressions":1001234},{"date":"2024-01-18","platform":"Facebook","spend":578.9,"conversions":77,"clicks":2978,"impressions":98901},{"date":"2024-01-18","platform":"Google","spend":1189.3,"conversions":136,"clicks":4478,"impressions":218234},{"date":"2024-01-18","platform":"TikTok","spend":2545.7,"conversions":233,"clicks":15056,"impressions":987234},{"date":"2024-01-19","platform":"Facebook","spend":623.7,"conversions":83,"clicks":3201,"impressions":105234},{"date":"2024-01-19","platform":"Google","spend":1278.4,"conversions":146,"clicks":4823,"impressions":233901},{"date":"2024-01-19","platform":"TikTok","spend":2634.9,"conversions":241,"clicks":15512,"impressions":1012345},{"date":"2024-01-20","platform":"Facebook","spend":534.6,"conversions":71,"clicks":2745,"impressions":91234},{"date":"2024-01-20","platform":"Google","spend":1145.6,"conversions":131,"clicks":4312,"impressions":210567},{"date":"2024-01-20","platform":"TikTok","spend":2467.8,"conversions":225,"clicks":14623,"impressions":963456},{"date":"2024-01-21","platform":"Facebook","spend":601.2,"conversions":80,"clicks":3089,"impressions":102345},{"date":"2024-01-21","platform":"Google","spend":1234.5,"conversions":141,"clicks":4645,"impressions":226789},{"date":"2024-01-21","platform":"TikTok","spend":2578.3,"conversions":236,"clicks":15189,"impressions":996789},{"date":"2024-01-22","platform":"Facebook","spend":645.3,"conversions":86,"clicks":3312,"impressions":109123},{"date":"2024-01-22","platform":"Google","spend":1323.4,"conversions":151,"clicks":4978,"impressions":242567},{"date":"2024-01-22","platform":"TikTok","spend":2712.6,"conversions":248,"clicks":16001,"impressions":1039876},{"date":"2024-01-23","platform":"Facebook","spend":567.8,"conversions":76,"clicks":2923,"impressions":97123},{"date":"2024-01-23","platform":"Google","spend":1178.9,"conversions":134,"clicks":4434,"impressions":216234},{"date":"2024-01-23","platform":"TikTok","spend":2523.7,"conversions":231,"clicks":14945,"impressions":984567},{"date":"2024-01-24","platform":"Facebook","spend":612.4,"conversions":82,"clicks":3145,"impressions":103901},{"date":"2024-01-24","platform":"Google","spend":1267.8,"conversions":145,"clicks":4756,"impressions":231345},{"date":"2024-01-24","platform":"TikTok","spend":2612.5,"conversions":239,"clicks":15423,"impressions":1005678},{"date":"2024-01-25","platform":"Facebook","spend":589.1,"conversions":79,"clicks":3023,"impressions":100234},{"date":"2024-01-25","platform":"Google","spend":1200.3,"conversions":137,"clicks":4512,"impressions":220123},{"date":"2024-01-25","platform":"TikTok","spend":2556.9,"conversions":234,"clicks":15089,"impressions":990345},{"date":"2024-01-26","platform":"Facebook","spend":623.8,"conversions":83,"clicks":3201,"impressions":105345},{"date":"2024-01-26","platform":"Google","spend":1289.7,"conversions":147,"clicks":4845,"impressions":235123},{"date":"2024-01-26","platform":"TikTok","spend":2645.3,"conversions":242,"clicks":15567,"impressions":1015678},{"date":"2024-01-27","platform":"Facebook","spend":541.4,"conversions":72,"clicks":2778,"impressions":92456},{"date":"2024-01-27","platform":"Google","spend":1145.2,"conversions":130,"clicks":4301,"impressions":209876},{"date":"2024-01-27","platform":"TikTok","spend":2445.8,"conversions":223,"clicks":14512,"impressions":955678},{"date":"2024-01-28","platform":"Facebook","spend":598.7,"conversions":80,"clicks":3067,"impressions":101567},{"date":"2024-01-28","platform":"Google","spend":1234.1,"conversions":141,"clicks":4645,"impressions":227123},{"date":"2024-01-28","platform":"TikTok","spend":2589.7,"conversions":237,"clicks":15256,"impressions":994567},{"date":"2024-01-29","platform":"Facebook","spend":645.6,"conversions":86,"clicks":3312,"impressions":109345},{"date":"2024-01-29","platform":"Google","spend":1323.6,"conversions":151,"clicks":4978,"impressions":242789},{"date":"2024-01-29","platform":"TikTok","spend":2723.4,"conversions":249,"clicks":16123,"impressions":1042345},{"date":"2024-01-30","platform":"Facebook","spend":548.3,"conversions":73,"clicks":2812,"impressions":93456},{"date":"2024-01-30","platform":"Google","spend":1156.4,"conversions":132,"clicks":4356,"impressions":213456},{"date":"2024-01-30","platform":"TikTok","spend":2534.5,"conversions":232,"clicks":15012,"impressions":988123}];
+
+const campaigns = [
+  {platform:"Facebook", campaign_name:"Brand_Awareness_Q1",      spend:4087.9,  conversions:433,  clicks:28917,  impressions:1425359, cpa:9.44},
+  {platform:"Facebook", campaign_name:"Conversions_Retargeting",  spend:6371.0,  conversions:1070, clicks:17103,  impressions:369383,  cpa:5.95},
+  {platform:"Facebook", campaign_name:"Traffic_Drive_Jan",        spend:5574.1,  conversions:741,  clicks:36560,  impressions:993150,  cpa:7.52},
+  {platform:"Facebook", campaign_name:"Video_Views_Campaign",     spend:2259.0,  conversions:151,  clicks:6319,   impressions:1753582, cpa:14.96},
+  {platform:"Google",   campaign_name:"Display_Remarketing",      spend:3352.5,  conversions:345,  clicks:12379,  impressions:3396726, cpa:9.72},
+  {platform:"Google",   campaign_name:"Search_Brand_Terms",       spend:7368.1,  conversions:1445, clicks:38603,  impressions:740093,  cpa:5.10},
+  {platform:"Google",   campaign_name:"Search_Generic_Terms",     spend:15548.9, conversions:627,  clicks:24162,  impressions:1215240, cpa:24.80},
+  {platform:"Google",   campaign_name:"Shopping_All_Products",    spend:11416.7, conversions:1801, clicks:62446,  impressions:1871485, cpa:6.34},
+  {platform:"TikTok",   campaign_name:"Awareness_GenZ",           spend:15640.0, conversions:1203, clicks:118539, impressions:8059087, cpa:13.00},
+  {platform:"TikTok",   campaign_name:"Conversion_Focus",         spend:20605.9, conversions:2061, clicks:75914,  impressions:3970406, cpa:10.00},
+  {platform:"TikTok",   campaign_name:"Influencer_Collab",        spend:26312.3, conversions:2653, clicks:170684, impressions:10513148,cpa:9.92},
+  {platform:"TikTok",   campaign_name:"Traffic_Campaign",         spend:11708.5, conversions:833,  clicks:96707,  impressions:6165526, cpa:14.06},
+];
+
+const COLORS = { Facebook: '#4f8ef7', Google: '#f75f4f', TikTok: '#4fffd4' };
+const CHART_DEFAULTS = {
+  color: '#e8eaf0',
+  font: { family: 'Syne' },
+  plugins: { legend: { display: false } },
+};
+
+// ── CURRENT FILTER ──
+let activePlatform = 'All';
+
+function filterPlatform(p) {
+  activePlatform = p;
+  document.querySelectorAll('.pill').forEach(el => el.classList.remove('active'));
+  const map = {'All':0,'Facebook':1,'Google':2,'TikTok':3};
+  document.querySelectorAll('.pill')[map[p]].classList.add('active');
+  updateAll();
+}
+
+function fmt(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(0)+'K' : n; }
+function fmtUSD(n) { return '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}); }
+
+function getFiltered() {
+  return activePlatform === 'All' ? byPlatform : byPlatform.filter(d => d.platform === activePlatform);
+}
+
+function sumField(arr, f) { return arr.reduce((a,b) => a + (b[f]||0), 0); }
+
+// ── KPI UPDATE ──
+function updateKPIs() {
+  const data = getFiltered();
+  const spend = sumField(data,'spend');
+  const impr = sumField(data,'impressions');
+  const clicks = sumField(data,'clicks');
+  const conv = sumField(data,'conversions');
+  const vv = sumField(data,'video_views');
+  const ctr = (clicks/impr*100).toFixed(2);
+  const cpa = (spend/conv).toFixed(2);
+
+  document.getElementById('kpi-spend').textContent = fmtUSD(Math.round(spend));
+  document.getElementById('kpi-spend-sub').textContent = activePlatform === 'All' ? 'All platforms' : activePlatform;
+  document.getElementById('kpi-impr').textContent = fmt(impr);
+  document.getElementById('kpi-impr-sub').textContent = 'Total impressions';
+  document.getElementById('kpi-clicks').textContent = fmt(clicks);
+  document.getElementById('kpi-clicks-sub').textContent = `Avg CTR ${ctr}%`;
+  document.getElementById('kpi-conv').textContent = conv.toLocaleString();
+  document.getElementById('kpi-conv-sub').textContent = `Avg CPA $${cpa}`;
+  document.getElementById('kpi-vv').textContent = fmt(vv);
+  document.getElementById('kpi-vv-sub').textContent = 'Video views';
+}
+
+// ── CHARTS ──
+let lineChart, donutChart, convBar, ctrBar, cpaBar;
+
+function buildLineChart() {
+  const dates = [...new Set(dailyRaw.map(d => d.date))].sort();
+  const platforms = activePlatform === 'All' ? ['Facebook','Google','TikTok'] : [activePlatform];
+
+  const datasets = platforms.map(p => ({
+    label: p,
+    data: dates.map(date => {
+      const row = dailyRaw.find(r => r.date === date && r.platform === p);
+      return row ? row.spend : 0;
+    }),
+    borderColor: COLORS[p],
+    backgroundColor: COLORS[p]+'22',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 0,
+    borderWidth: 2,
+  }));
+
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates.map(d => d.slice(5)), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: platforms.length > 1, labels: { color: '#6b7180', font: {family:'DM Mono',size:10}, boxWidth: 12 }}},
+      scales: {
+        x: { grid: { color: '#252836' }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:9}, maxTicksLimit: 10 }},
+        y: { grid: { color: '#252836' }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:9}, callback: v => '$'+v.toLocaleString() }},
+      },
+    },
+  });
+}
+
+function buildDonut() {
+  const data = getFiltered();
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  if (donutChart) donutChart.destroy();
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.platform),
+      datasets: [{ data: data.map(d => d.spend), backgroundColor: data.map(d => COLORS[d.platform]), borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      cutout: '68%',
+      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#6b7180', font:{family:'DM Mono',size:10}, boxWidth:12 }}},
+    },
+  });
+}
+
+function buildConvBar() {
+  const data = getFiltered();
+  const ctx = document.getElementById('convBar').getContext('2d');
+  if (convBar) convBar.destroy();
+  convBar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.platform),
+      datasets: [{ data: data.map(d => d.conversions), backgroundColor: data.map(d => COLORS[d.platform]), borderRadius: 6, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:10} }},
+        y: { grid: { color: '#252836' }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:9} }},
+      },
+    },
+  });
+}
+
+function buildCTRBar() {
+  const data = getFiltered();
+  const ctx = document.getElementById('ctrBar').getContext('2d');
+  if (ctrBar) ctrBar.destroy();
+  ctrBar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.platform),
+      datasets: [{ data: data.map(d => d.ctr), backgroundColor: data.map(d => COLORS[d.platform]+'99'), borderRadius: 6, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:10} }},
+        y: { grid: { color: '#252836' }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:9}, callback: v => v+'%' }},
+      },
+    },
+  });
+}
+
+function buildCPABar() {
+  const data = getFiltered();
+  const ctx = document.getElementById('cpaBar').getContext('2d');
+  if (cpaBar) cpaBar.destroy();
+  cpaBar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.platform),
+      datasets: [{ data: data.map(d => d.cpa), backgroundColor: data.map(d => COLORS[d.platform]+'77'), borderRadius: 6, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:10} }},
+        y: { grid: { color: '#252836' }, ticks: { color: '#6b7180', font:{family:'DM Mono',size:9}, callback: v => '$'+v }},
+      },
+    },
+  });
+}
+
+function buildTable() {
+  const data = activePlatform === 'All' ? campaigns : campaigns.filter(c => c.platform === activePlatform);
+  const maxCPA = Math.max(...data.map(c => c.cpa));
+  const tbody = document.getElementById('campaignBody');
+  tbody.innerHTML = data.map(c => {
+    const cls = c.platform.toLowerCase().replace('tiktok','tt').replace('facebook','fb').replace('google','gg');
+    const barW = Math.round((c.cpa / maxCPA) * 80);
+    const name = c.campaign_name.replace(/_/g,' ');
+    return `<tr>
+      <td><span class="badge ${cls}">${c.platform}</span></td>
+      <td>${name}</td>
+      <td>${c.impressions.toLocaleString()}</td>
+      <td>${c.clicks.toLocaleString()}</td>
+      <td>$${c.spend.toLocaleString()}</td>
+      <td>${c.conversions.toLocaleString()}</td>
+      <td>
+        <div class="cpa-bar-wrap">
+          <span>$${c.cpa}</span>
+          <div class="cpa-bar" style="width:${barW}px;background:${COLORS[c.platform]}"></div>
+        </div>
+      </td>
+      <td style="color:${c.cpa < 10 ? '#4fffd4' : c.cpa < 15 ? '#f0e040' : '#f75f4f'};font-family:'DM Mono',monospace;font-size:11px">
+        ${c.cpa < 10 ? '✦ Efficient' : c.cpa < 15 ? '◆ Average' : '▼ Review'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateAll() {
+  updateKPIs();
+  buildLineChart();
+  buildDonut();
+  buildConvBar();
+  buildCTRBar();
+  buildCPABar();
+  buildTable();
+}
+
+updateAll();
+</script>
+</body>
+</html>
